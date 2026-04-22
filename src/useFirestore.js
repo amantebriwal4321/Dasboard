@@ -33,7 +33,6 @@ export function useFirestore(key, defaultValue) {
   const [data, setDataRaw] = useState(loadLocal);
   const [user, setUser] = useState(auth.currentUser);
   const debounceRef = useRef(null);
-  const skipNextRemote = useRef(false);
 
   // Track auth state
   useEffect(() => {
@@ -49,11 +48,8 @@ export function useFirestore(key, defaultValue) {
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const remote = snap.data().value;
-        if (!skipNextRemote.current) {
-          setDataRaw(remote);
-          saveLocal(remote); // keep localStorage in sync as a cache
-        }
-        skipNextRemote.current = false;
+        setDataRaw(remote);
+        saveLocal(remote); // keep localStorage in sync as a cache
       }
     }, (error) => {
       console.warn(`Firestore listener error for "${key}":`, error);
@@ -61,16 +57,6 @@ export function useFirestore(key, defaultValue) {
 
     return unsub;
   }, [user, key]);
-
-  // When user first logs in, migrate their localStorage data to Firestore
-  useEffect(() => {
-    if (!user) return;
-    const local = loadLocal();
-    if (local && JSON.stringify(local) !== JSON.stringify(defaultValue)) {
-      const docRef = doc(db, 'users', user.uid, 'data', key);
-      setDoc(docRef, { value: local }, { merge: true }).catch(() => {});
-    }
-  }, [user]);
 
   // Custom setter that writes to both Firestore and localStorage
   const setData = useCallback((updater) => {
@@ -83,7 +69,6 @@ export function useFirestore(key, defaultValue) {
       // Debounced write to Firestore (avoids hammering the server)
       if (user) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        skipNextRemote.current = true;
         debounceRef.current = setTimeout(() => {
           const docRef = doc(db, 'users', user.uid, 'data', key);
           setDoc(docRef, { value: next }, { merge: true }).catch((err) => {

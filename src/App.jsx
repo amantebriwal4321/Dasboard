@@ -114,16 +114,17 @@ function TodayView({ tasks, setTasks }) {
   const pending = todayTasks.filter(t => !t.done);
   const done = todayTasks.filter(t => t.done);
 
-  useEffect(() => {
-    const y = daysFromNow(-1);
-    const left = tasks.filter(t => t.date === y && !t.done && !t.carriedOver);
+  const y = daysFromNow(-1);
+  const left = tasks.filter(t => t.date === y && !t.done && !t.carriedOver);
+
+  const carryOver = () => {
     if (!left.length) return;
     setTasks(prev => {
       const flagged = prev.map(t => t.date === y && !t.done ? { ...t, carriedOver: true } : t);
       const copies = left.map(t => ({ ...t, id: uid(), date: td, carriedOver: true, done: false }));
       return [...flagged, ...copies];
     });
-  }, []);
+  };
 
   const add = () => { const t = input.trim(); if (!t) return; setTasks(prev => [{ id: uid(), title: t, category: cat, priority: pri, done: false, date: td, carriedOver: false, createdAt: Date.now() }, ...prev]); setInput(''); ref.current?.focus(); };
   const toggle = (id) => setTasks(p => p.map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -152,6 +153,12 @@ function TodayView({ tasks, setTasks }) {
         <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2">Today <span className="text-gray-300">·</span> <span className="text-base text-gray-400 font-normal">{pending.length} remaining</span></h1>
         {todayTasks.length > 0 && <div className="mt-3"><div className="flex justify-between text-xs text-gray-400 mb-1"><span>{done.length}/{todayTasks.length}</span><span className={pct === 100 ? 'text-emerald-600 font-bold' : ''}>{pct}%</span></div><ProgressBar value={pct} color={pct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}/></div>}
       </div>
+      {left.length > 0 && (
+        <div className="card p-3 bg-orange-50 border-orange-200 flex items-center justify-between animate-slide-up">
+          <p className="text-orange-800 text-sm font-medium">{left.length} task{left.length > 1 ? 's' : ''} left from yesterday</p>
+          <button onClick={carryOver} className="btn-secondary !bg-white text-xs !py-1.5">Carry over</button>
+        </div>
+      )}
       <div className="card p-4 space-y-3">
         <div className="flex gap-2">
           <input ref={ref} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="What needs to be done?" className="input-base flex-1"/>
